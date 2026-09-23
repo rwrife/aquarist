@@ -82,10 +82,17 @@ The dual-screen experience is a documented design target and migration path, **n
 
 ## Current status and milestones
 
-This repository is currently **documentation and backlog only**. No Xcode project, app binary, build result, TestFlight build, or device evidence exists yet.
+Native skeleton landed (issue #1): `Aquarist.xcodeproj` (app + UI-test
+targets, bundle id `com.infinityball.aquarist`, `TARGETED_DEVICE_FAMILY = 1`
+in every configuration), pure Swift 6 `Packages/AquaristKit`, launch XCUITest
+smoke, and CI that measures the exact pinned toolchain, enforces iPhone-only
+pre-build grep + post-build `UIDeviceFamily == [1]`, runs a zero-network
+empty-allowlist gate, and runs the package tests on Linux. See
+`docs/bootstrap-evidence.md` for what is host-verified vs CI-authoritative.
+**No device, archive, or TestFlight evidence exists yet.** Remaining backlog:
 
 - [x] M0: idea, README/PLAN, toolchain pin, backlog
-- [ ] M1: Xcode project skeleton + native CI with toolchain pin + iPhone-only guards (issue #1)
+- [x] M1: Xcode project skeleton + native CI with toolchain pin + iPhone-only guards (issue #1)
 - [ ] M2: `AquaristKit` pure-Swift domain: event ledger, derivations, reference bands, unknown-safe semantics + tests (issue #2)
 - [ ] M3: GRDB persistence with versioned migrations, fixture DB (issue #3)
 - [ ] M4: tank wall + quick-log UI (issues #4, #6)
