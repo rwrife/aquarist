@@ -23,5 +23,5 @@ public enum AquaristKit {
     public static let domain = "AquaristKit"
 
     /// Current build/CI milestone marker consumed by the app's debug surface.
-    public static let milestone = "M2-domain"
+    public static let milestone = "M3-persistence"
 }

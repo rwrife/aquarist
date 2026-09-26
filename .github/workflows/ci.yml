@@ -22,8 +22,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Swift version
         run: swift --version
-      - name: Run package tests
+      - name: Install system SQLite headers (GRDB systemLibrary on Linux)
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq libsqlite3-dev
+      - name: Run domain package tests
         run: swift test --package-path Packages/AquaristKit
+      - name: Run store package tests
+        run: swift test --package-path Packages/AquaristStore
       - name: Zero-network gate
         run: bash scripts/check_zero_network.sh
       - name: Gitignore keeps signing material out
