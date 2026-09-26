@@ -82,19 +82,22 @@ The dual-screen experience is a documented design target and migration path, **n
 
 ## Current status and milestones
 
-Native skeleton landed (issue #1): `Aquarist.xcodeproj` (app + UI-test
-targets, bundle id `com.infinityball.aquarist`, `TARGETED_DEVICE_FAMILY = 1`
-in every configuration), pure Swift 6 `Packages/AquaristKit`, launch XCUITest
-smoke, and CI that measures the exact pinned toolchain, enforces iPhone-only
-pre-build grep + post-build `UIDeviceFamily == [1]`, runs a zero-network
-empty-allowlist gate, and runs the package tests on Linux. See
-`docs/bootstrap-evidence.md` for what is host-verified vs CI-authoritative.
+Native skeleton (issue #1), `AquaristKit` domain core (issue #2), and
+`AquaristStore` persistence (issue #3) have landed: `Aquarist.xcodeproj`
+(app + UI-test targets, bundle id `com.infinityball.aquarist`,
+`TARGETED_DEVICE_FAMILY = 1` in every configuration), pure Swift 6
+`Packages/AquaristKit`, GRDB/SQLite schema v1 `Packages/AquaristStore`
+with frozen migrations + committed fixture DB, launch XCUITest smoke, and CI
+that measures the exact pinned toolchain, enforces iPhone-only pre-build grep
++ post-build `UIDeviceFamily == [1]`, runs a zero-network empty-allowlist gate,
+and runs all package tests on Linux and macOS. See `docs/bootstrap-evidence.md`
+for what is host-verified vs CI-authoritative.
 **No device, archive, or TestFlight evidence exists yet.** Remaining backlog:
 
 - [x] M0: idea, README/PLAN, toolchain pin, backlog
 - [x] M1: Xcode project skeleton + native CI with toolchain pin + iPhone-only guards (issue #1)
-- [ ] M2: `AquaristKit` pure-Swift domain: event ledger, derivations, reference bands, unknown-safe semantics + tests (issue #2)
-- [ ] M3: GRDB persistence with versioned migrations, fixture DB (issue #3)
+- [x] M2: `AquaristKit` pure-Swift domain: event ledger, derivations, reference bands, unknown-safe semantics + tests (issue #2)
+- [x] M3: GRDB persistence with versioned migrations, fixture DB (issue #3)
 - [ ] M4: tank wall + quick-log UI (issues #4, #6)
 - [ ] M5: test-day capture + trends + livestock ledger (issue #6)
 - [ ] M6: backup/restore + CSV export + privacy controls (issue #7)
@@ -108,8 +111,9 @@ empty-allowlist gate, and runs the package tests on Linux. See
 xcodebuild -project Aquarist.xcodeproj -scheme Aquarist \
   -sdk iphoneos -destination 'generic/platform=iOS' build
 xcodebuild -scheme AquaristKit-Package test
+swift test --package-path Packages/AquaristStore
 ```
-On Linux, the pure-Swift `AquaristKit` package tests run under a pinned Swift container; the app target builds only on Apple runners. Never claim archive/device/TestFlight results from Linux source checks.
+On Linux, `AquaristKit` and the GRDB-backed `AquaristStore` package tests run under a pinned Swift container (with `libsqlite3-dev`); the app target builds only on Apple runners. Never claim archive/device/TestFlight results from Linux source checks.
 
 ## License
 
