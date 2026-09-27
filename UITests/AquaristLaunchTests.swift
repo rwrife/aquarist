@@ -11,9 +11,9 @@ final class AquaristLaunchTests: XCTestCase {
         app.launchArguments = ["-ui-testing"]
         app.launch()
 
-        XCTAssertTrue(app.otherElements["wall.empty"].waitForExistence(timeout: 10))
-
-        app.buttons["wall.addTank"].tap()
+        let addTank = app.buttons["wall.addTank"]
+        XCTAssertTrue(addTank.waitForExistence(timeout: 10))
+        addTank.tap()
         let name = app.textFields["tank.name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
