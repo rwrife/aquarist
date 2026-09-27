@@ -128,4 +128,42 @@ struct RepositoryTests {
         #expect(usage.rows.referenceBands == 1)
         #expect(usage.databaseBytes >= 0)
     }
+
+    @Test("tank registry fields survive create and edit")
+    func registryRoundTrip() throws {
+        let store = try AquaristStore.inMemory()
+        var tank = Tank(
+            name: "Mangrove",
+            volume: TankVolume.parse("approx 20 gal"),
+            kind: .brackish,
+            createdAt: d(123),
+            notes: "Low-flow shelf"
+        )
+        try store.tanks.upsert(tank)
+        #expect(try store.tanks.tank(id: tank.id) == tank)
+
+        tank.name = "Mangrove nursery"
+        tank.notes = "West shelf"
+        try store.tanks.upsert(tank)
+        #expect(try store.tanks.tank(id: tank.id) == tank)
+    }
+
+    @Test("append-only correction makes a reading ineffective")
+    func correctionUndo() throws {
+        let h = try Harness()
+        let reading = TankEvent(
+            tankID: h.tankA.id,
+            timestamp: d(10),
+            payload: .testReading(parameter: "pH", rawValue: "7.8", note: nil)
+        )
+        try h.store.events.append(reading)
+        try h.store.events.append(TankEvent(
+            tankID: h.tankA.id,
+            timestamp: d(11),
+            payload: .correction(targetEventID: reading.id, note: "Undo")
+        ))
+
+        #expect(try h.store.events.events(for: h.tankA.id).count == 2)
+        #expect(try h.store.events.readingSeries(tankID: h.tankA.id, parameter: "pH").isEmpty)
+    }
 }

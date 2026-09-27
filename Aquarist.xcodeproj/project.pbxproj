@@ -7,9 +7,13 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000101 /* AquaristApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000201 /* AquaristApp.swift */; };
-		A10000000000000000000102 /* BootstrapHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000202 /* BootstrapHomeView.swift */; };
 		A10000000000000000000103 /* AquaristLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000203 /* AquaristLaunchTests.swift */; };
 		A10000000000000000000104 /* AquaristKit in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000801 /* AquaristKit */; };
+		A10000000000000000000105 /* AquaristModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000206 /* AquaristModel.swift */; };
+		A10000000000000000000106 /* TankWallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000207 /* TankWallView.swift */; };
+		A10000000000000000000107 /* TankEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000208 /* TankEditorView.swift */; };
+		A10000000000000000000108 /* QuickLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000209 /* QuickLogView.swift */; };
+		A10000000000000000000109 /* AquaristStore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000803 /* AquaristStore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -24,17 +28,23 @@
 
 /* Begin PBXFileReference section */
 		A10000000000000000000201 /* AquaristApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AquaristApp.swift; sourceTree = "<group>"; };
-		A10000000000000000000202 /* BootstrapHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BootstrapHomeView.swift; sourceTree = "<group>"; };
 		A10000000000000000000203 /* AquaristLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AquaristLaunchTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000204 /* Aquarist.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Aquarist.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000205 /* AquaristUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AquaristUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000206 /* AquaristModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AquaristModel.swift; sourceTree = "<group>"; };
+		A10000000000000000000207 /* TankWallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TankWallView.swift; sourceTree = "<group>"; };
+		A10000000000000000000208 /* TankEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TankEditorView.swift; sourceTree = "<group>"; };
+		A10000000000000000000209 /* QuickLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A10000000000000000000401 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = (A10000000000000000000104 /* AquaristKit in Frameworks */,);
+			files = (
+				A10000000000000000000104 /* AquaristKit in Frameworks */,
+				A10000000000000000000109 /* AquaristStore in Frameworks */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000402 /* Frameworks */ = {
@@ -59,7 +69,10 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000201 /* AquaristApp.swift */,
-				A10000000000000000000202 /* BootstrapHomeView.swift */,
+				A10000000000000000000206 /* AquaristModel.swift */,
+				A10000000000000000000207 /* TankWallView.swift */,
+				A10000000000000000000208 /* TankEditorView.swift */,
+				A10000000000000000000209 /* QuickLogView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -93,7 +106,10 @@
 			buildRules = ();
 			dependencies = ();
 			name = Aquarist;
-			packageProductDependencies = (A10000000000000000000801 /* AquaristKit */,);
+			packageProductDependencies = (
+				A10000000000000000000801 /* AquaristKit */,
+				A10000000000000000000803 /* AquaristStore */,
+			);
 			productName = Aquarist;
 			productReference = A10000000000000000000204 /* Aquarist.app */;
 			productType = "com.apple.product-type.application";
@@ -134,7 +150,10 @@
 			knownRegions = (en, Base,);
 			mainGroup = A10000000000000000000500;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (A10000000000000000000800 /* XCLocalSwiftPackageReference "Packages/AquaristKit" */,);
+			packageReferences = (
+				A10000000000000000000800 /* XCLocalSwiftPackageReference "Packages/AquaristKit" */,
+				A10000000000000000000802 /* XCLocalSwiftPackageReference "Packages/AquaristStore" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A10000000000000000000503 /* Products */;
 			projectDirPath = "";
@@ -157,7 +176,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000101 /* AquaristApp.swift in Sources */,
-				A10000000000000000000102 /* BootstrapHomeView.swift in Sources */,
+				A10000000000000000000105 /* AquaristModel.swift in Sources */,
+				A10000000000000000000106 /* TankWallView.swift in Sources */,
+				A10000000000000000000107 /* TankEditorView.swift in Sources */,
+				A10000000000000000000108 /* QuickLogView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -258,10 +280,12 @@
 
 /* Begin XCLocalSwiftPackageReference section */
 		A10000000000000000000800 /* XCLocalSwiftPackageReference "Packages/AquaristKit" */ = {isa = XCLocalSwiftPackageReference; relativePath = Packages/AquaristKit;};
+		A10000000000000000000802 /* XCLocalSwiftPackageReference "Packages/AquaristStore" */ = {isa = XCLocalSwiftPackageReference; relativePath = Packages/AquaristStore;};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		A10000000000000000000801 /* AquaristKit */ = {isa = XCSwiftPackageProductDependency; productName = AquaristKit;};
+		A10000000000000000000803 /* AquaristStore */ = {isa = XCSwiftPackageProductDependency; productName = AquaristStore;};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A10000000000000000000000 /* Project object */;

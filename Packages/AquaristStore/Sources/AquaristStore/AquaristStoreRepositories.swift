@@ -81,6 +81,7 @@ enum TankEventPayloadCodec {
         case .livestockObserved: type = "livestockObserved"
         case .equipment: type = "equipment"
         case .note: type = "note"
+        case .correction: type = "correction"
         }
         return (type, json, testParameter)
     }
@@ -107,21 +108,28 @@ public struct GRDBTankRepository: TankRepository {
         try db.write { writer in
             try writer.execute(
                 sql: """
-                INSERT INTO tanks (id, name, volume_liters, volume_is_approximate, volume_raw_input, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO tanks (
+                    id, name, volume_liters, volume_is_approximate,
+                    volume_raw_input, kind, created_at, notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     name = excluded.name,
                     volume_liters = excluded.volume_liters,
                     volume_is_approximate = excluded.volume_is_approximate,
                     volume_raw_input = excluded.volume_raw_input,
-                    created_at = excluded.created_at
+                    kind = excluded.kind,
+                    created_at = excluded.created_at,
+                    notes = excluded.notes
                 """,
                 arguments: [
                     tank.id.uuidString, tank.name,
                     tank.volume.map { "\($0.liters)" },
                     tank.volume?.isApproximate,
                     tank.volume?.rawInput,
+                    tank.kind.rawValue,
                     tank.createdAt,
+                    tank.notes,
                 ]
             )
         }
@@ -153,11 +161,15 @@ public struct GRDBTankRepository: TankRepository {
         } else {
             volume = nil
         }
+        let rawKind: String = row["kind"] ?? "freshwater"
+        let kind = TankKind(rawValue: rawKind) ?? .other
         return Tank(
             id: UUID(uuidString: row["id"])!,
             name: row["name"],
             volume: volume,
-            createdAt: row["created_at"]
+            kind: kind,
+            createdAt: row["created_at"],
+            notes: row["notes"] ?? ""
         )
     }
 }
@@ -198,20 +210,11 @@ public struct GRDBTankEventRepository: TankEventRepository {
     }
 
     public func readingSeries(tankID: UUID, parameter: String) throws -> [Derivations.ReadingPoint] {
-        // The SQL narrows rows with the (tank_id, test_parameter) index; the
-        // actual raw-value -> parsed-value rule stays in `Derivations`, so the
+        // Read the tank's complete ledger so append-only corrections can
+        // retract a reading without mutating or deleting its original row;
+        // the raw-value -> parsed-value rule stays in `Derivations`, so the
         // store can never drift from the domain's unknown-safe semantics.
-        let events: [TankEvent] = try db.read { reader in
-            try Row.fetchAll(
-                reader,
-                sql: """
-                SELECT * FROM tank_events
-                WHERE tank_id = ? AND payload_type = 'testReading' AND test_parameter = ?
-                ORDER BY timestamp, id
-                """,
-                arguments: [tankID.uuidString, parameter]
-            ).map(Self.event(from:))
-        }
+        let events = try events(for: tankID)
         guard case .known(let points) = Derivations.readingSeries(
             parameter: parameter, ledger: EventLedger(events: events)
         ) else {

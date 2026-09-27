@@ -35,9 +35,10 @@ public enum Derivations {
         now: Date,
         calendar: Calendar
     ) -> Derivation<Int> {
-        guard !ledger.events.isEmpty else { return .unknown }
+        let effectiveEvents = ledger.effectiveEvents
+        guard !effectiveEvents.isEmpty else { return .unknown }
 
-        let loggedDays = Set(ledger.events.map { calendar.startOfDay(for: $0.timestamp) })
+        let loggedDays = Set(effectiveEvents.map { calendar.startOfDay(for: $0.timestamp) })
         let today = calendar.startOfDay(for: now)
         guard loggedDays.contains(today) else { return .known(0) }
 
@@ -90,7 +91,7 @@ public enum Derivations {
 
         // Index water-change events by their week start.
         var buckets: [Date: [TankEvent]] = [:]
-        for event in ledger.events {
+        for event in ledger.effectiveEvents {
             guard case .waterChange = event.payload else { continue }
             let ws = weekStart(for: event.timestamp, calendar: calendar)
             buckets[ws, default: []].append(event)
@@ -132,7 +133,7 @@ public enum Derivations {
         now: Date,
         calendar: Calendar
     ) -> Derivation<Int> {
-        guard let last = ledger.events.last(where: {
+        guard let last = ledger.effectiveEvents.last(where: {
             if case .dose = $0.payload { return true }
             return false
         }) else {
@@ -159,7 +160,7 @@ public enum Derivations {
         parameter: String,
         ledger: EventLedger
     ) -> Derivation<[ReadingPoint]> {
-        let points: [ReadingPoint] = ledger.events.compactMap { event in
+        let points: [ReadingPoint] = ledger.effectiveEvents.compactMap { event in
             guard case let .testReading(eventParameter, rawValue, _) = event.payload,
                   eventParameter == parameter else { return nil }
             return ReadingPoint(
@@ -181,7 +182,7 @@ public enum Derivations {
         ledger: EventLedger
     ) -> [String: Int] {
         var roster: [String: Int] = [:]
-        for event in ledger.events {
+        for event in ledger.effectiveEvents {
             switch event.payload {
             case let .livestockAdded(species, quantity, _):
                 roster[species, default: 0] += quantity
@@ -197,7 +198,7 @@ public enum Derivations {
     // MARK: - Helpers
 
     private static func lastWaterChange(in ledger: EventLedger) -> TankEvent? {
-        ledger.events.last {
+        ledger.effectiveEvents.last {
             if case .waterChange = $0.payload { return true }
             return false
         }

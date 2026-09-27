@@ -6,13 +6,13 @@ import AquaristStore
 
 private func date(_ seconds: TimeInterval) -> Date { Date(timeIntervalSince1970: seconds) }
 
-@Suite("AquaristStore schema v1")
+@Suite("AquaristStore current schema")
 struct SchemaTests {
-    @Test("fresh DB applies exactly schema v1")
+    @Test("fresh DB applies every migration through schema v2")
     func freshVersion() throws {
         let store = try AquaristStore.inMemory()
         let applied = try aquaristStoreAppliedSchemaVersion(store.db)
-        #expect(applied == 1)
+        #expect(applied == 2)
         #expect(applied == AquaristStoreSchema.currentVersion)
     }
 
@@ -23,7 +23,7 @@ struct SchemaTests {
         let db = try DatabaseQueue(configuration: config)
         try AquaristStoreSchema.migrator.migrate(db)
         try AquaristStoreSchema.migrator.migrate(db)
-        #expect(try aquaristStoreAppliedSchemaVersion(db) == 1)
+        #expect(try aquaristStoreAppliedSchemaVersion(db) == 2)
     }
 
     @Test("required tables and columns exist")
@@ -37,6 +37,8 @@ struct SchemaTests {
             ]
         }
         #expect(columns["tanks"]?.contains("created_at") == true)
+        #expect(columns["tanks"]?.contains("kind") == true)
+        #expect(columns["tanks"]?.contains("notes") == true)
         #expect(columns["tank_events"]?.contains("payload_json") == true)
         #expect(columns["tank_events"]?.contains("test_parameter") == true)
         #expect(columns["reference_bands"]?.contains("tank_id") == true)

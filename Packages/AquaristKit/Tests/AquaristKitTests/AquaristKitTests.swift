@@ -58,6 +58,22 @@ struct ModelCodableTests {
         #expect(decoded.volume == nil)
     }
 
+    @Test("Tank kind + notes round-trip verbatim")
+    func tankRegistryFieldsRoundTrip() throws {
+        let tank = Tank(
+            name: "Mangrove",
+            volume: TankVolume.parse("20 gal"),
+            kind: .brackish,
+            createdAt: Fixture.date(2026, 2, 2),
+            notes: "  low-flow shelf  "
+        )
+        let data = try JSONEncoder().encode(tank)
+        let decoded = try JSONDecoder().decode(Tank.self, from: data)
+        #expect(decoded.kind == .brackish)
+        #expect(decoded.notes == "  low-flow shelf  ")
+        #expect(decoded == tank)
+    }
+
     @Test("Every event payload kind round-trips")
     func payloadRoundTrip() throws {
         let ts = Fixture.date(2026, 5, 1, 8, 30)
@@ -72,6 +88,7 @@ struct ModelCodableTests {
             .livestockObserved(species: "Nerite snail", note: "spawned"),
             .equipment(name: "Canister filter", note: "serviced"),
             .note("Ran light 6h only"),
+            .correction(targetEventID: UUID(), note: "Undo"),
         ]
         for payload in payloads {
             let event = TankEvent(tankID: Fixture.tankID, timestamp: ts, payload: payload)
@@ -92,6 +109,30 @@ struct ModelCodableTests {
         )
         #expect(decoded == ledger)
         #expect(decoded.events.map(\.payload) == [.note("first"), .note("second")])
+    }
+}
+
+@Suite("Ledger — append-only corrections")
+struct LedgerCorrectionTests {
+    @Test("correction preserves audit rows and retracts target from derivations")
+    func correction() {
+        let waterChange = Fixture.event(
+            Fixture.date(2026, 5, 1),
+            .waterChange(percentOfVolume: 25, volumeLiters: nil, note: nil)
+        )
+        let correction = Fixture.event(
+            Fixture.date(2026, 5, 2),
+            .correction(targetEventID: waterChange.id, note: "Undo")
+        )
+        let ledger = EventLedger(events: [waterChange, correction])
+
+        #expect(ledger.events.count == 2)
+        #expect(ledger.effectiveEvents.isEmpty)
+        #expect(Derivations.daysSinceWaterChange(
+            ledger: ledger,
+            now: Fixture.date(2026, 5, 3),
+            calendar: Calendar(identifier: .gregorian)
+        ) == .unknown)
     }
 }
 
