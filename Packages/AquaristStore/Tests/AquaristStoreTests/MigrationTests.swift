@@ -38,7 +38,7 @@ struct MigrationTests {
 
         let applied = try aquaristStoreAppliedSchemaVersion(store.db)
         #expect(applied == AquaristStoreSchema.currentVersion)
-        #expect(applied == 1)
+        #expect(applied == 2)
     }
 
     @Test("fixture data survives migration")
@@ -49,6 +49,7 @@ struct MigrationTests {
         let tanks = try store.tanks.allTanks()
         #expect(tanks.map(\.id).contains(tankID))
         #expect(tanks.map(\.id).contains(secondTankID))
+        #expect(tanks.allSatisfy { $0.kind == .freshwater && $0.notes.isEmpty })
 
         let events = try store.events.events(for: tankID)
         #expect(events.count == 3)

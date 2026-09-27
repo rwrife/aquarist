@@ -8,7 +8,7 @@ public enum AquaristStoreError: Error, Equatable, Sendable {
 }
 
 public enum AquaristStoreSchema {
-    public static let migrationIdentifiers: [String] = ["v1"]
+    public static let migrationIdentifiers: [String] = ["v1", "v2"]
     public static var currentVersion: Int { migrationIdentifiers.count }
 
     public static let migrator: DatabaseMigrator = {
@@ -57,6 +57,16 @@ public enum AquaristStoreSchema {
                 on: "reference_bands",
                 columns: ["tank_id", "parameter"]
             )
+        }
+        migrator.registerMigration("v2") { db in
+            // Issue #4: tank registry gains a user-facing kind (freshwater/
+            // saltwater/brackish/other) and free-form notes. Existing rows
+            // default to "freshwater" / empty notes — an honest default for
+            // pre-M4 data, not a guess about husbandry state.
+            try db.alter(table: "tanks") { table in
+                table.add(column: "kind", .text).notNull().defaults(to: "freshwater")
+                table.add(column: "notes", .text).notNull().defaults(to: "")
+            }
         }
         return migrator
     }()

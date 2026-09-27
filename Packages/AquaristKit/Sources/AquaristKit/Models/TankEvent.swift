@@ -36,6 +36,12 @@ public enum TankEventPayload: Codable, Equatable, Sendable {
 
     /// Free-form note.
     case note(String)
+
+    /// A correction/undo of a previously-logged event, referencing it by id.
+    /// Append-only by design: the original event is never mutated or deleted,
+    /// but it stops counting toward derived views (see
+    /// `EventLedger.effectiveEvents`) once a correction references it.
+    case correction(targetEventID: UUID, note: String?)
 }
 
 /// One entry in a tank's append-only event ledger.
@@ -96,5 +102,21 @@ public struct EventLedger: Codable, Equatable, Sendable {
         var copy = self
         copy.append(event)
         return copy
+    }
+
+    /// Events that remain in effect after applying append-only corrections
+    /// ("Undo"). Correction rows themselves are audit history, not
+    /// husbandry activity, so every derivation should read from this
+    /// instead of `events` directly.
+    public var effectiveEvents: [TankEvent] {
+        let retracted = Set(events.compactMap { event -> UUID? in
+            guard case let .correction(targetEventID, _) = event.payload else { return nil }
+            return targetEventID
+        })
+        return events.filter { event in
+            guard !retracted.contains(event.id) else { return false }
+            if case .correction = event.payload { return false }
+            return true
+        }
     }
 }
