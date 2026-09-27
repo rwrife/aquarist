@@ -117,7 +117,7 @@ extension Tank {
         let ledger = EventLedger(events: events)
         let water = Derivations.daysSinceWaterChange(ledger: ledger, now: now, calendar: calendar)
         let dose = Derivations.lastDoseAgeInDays(ledger: ledger, now: now, calendar: calendar)
-        switch (water, dose) {
+        return switch (water, dose) {
         case (.unknown, .unknown): .unknown
         case (.known, .known): .recorded
         default: .partial
