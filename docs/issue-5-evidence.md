@@ -41,9 +41,10 @@ remains CI-only per the project's evidence rules.
   dual-pane layout, test-day capture flow, selection/scroll continuity, and the
   migration checklist for future native dual-screen APIs.
 - `UITests/AquaristLaunchTests.swift`:
-  - `testQuickLogInitialControlsFollowLogicalOrderAndMeetTapTargets`: verifies
-    top-to-bottom ordering of the always-visible quick-log inputs plus >=44pt
-    Cancel/Save targets, without depending on lazily unrealized Form rows.
+  - `testQuickLogInitialControlsFollowLogicalOrderAndToolbarActionsAreHittable`:
+    verifies top-to-bottom ordering of the always-visible quick-log inputs plus
+    hittable Cancel/Save toolbar actions, without depending on lazily unrealized
+    Form rows or toolbar-label AX frame dimensions.
   - `testWallAndQuickLogRenderAtAccessibilityDynamicType`: asserts card rendering
     under AX5 Dynamic Type and attaches screenshots (`AX5-Tank-Wall`, `AX5-Water-Change-Quick-Log`)
     to the test result bundle.
