@@ -72,7 +72,7 @@ The dual-screen experience is a documented design target and migration path, **n
 
 - **Folded (today):** one-handed tank wall and quick-log sheets sized for wet-hands use at the tank.
 - **Unfolded (design target):** tank wall becomes a persistent control surface on one display while the selected tank's ledger, trend charts, and livestock roster occupy the other — the canonical master-detail span, plus unfolded session-style test-day capture (keypad + live ledger side by side).
-- **Migration seam:** `TankWorkspaceLayout` is the single view that maps workspace modes to screen regions. Today it resolves to the existing single-pane NavigationStack; a future native dual-screen API layer would implement the same mode vocabulary (wall/control-surface vs detail/ledger, selection + scroll continuity) without touching the domain layer. No unavailable fold/SDK APIs are used or assumed.
+- **Migration seam:** `TankWorkspaceLayout` is the single view that maps workspace modes to screen regions. Today it resolves to the existing single-pane NavigationStack; a future native dual-screen API layer would implement the same mode vocabulary (wall/control-surface vs detail/ledger, selection + scroll continuity) without touching the domain layer. No unavailable fold/SDK APIs are used or assumed. See [`docs/dual-screen.md`](docs/dual-screen.md) for the continuity contract, unfolded target, and migration checklist.
 
 ## Bundle identifier and App Store Connect
 
@@ -99,10 +99,10 @@ for what is host-verified vs CI-authoritative.
 - [x] M1: Xcode project skeleton + native CI with toolchain pin + iPhone-only guards (issue #1)
 - [x] M2: `AquaristKit` pure-Swift domain: event ledger, derivations, reference bands, unknown-safe semantics + tests (issue #2)
 - [x] M3: GRDB persistence with versioned migrations, fixture DB (issue #3)
-- [x] M4: tank wall + quick-log UI (issues #4, #6)
-- [ ] M5: test-day capture + trends + livestock ledger (issue #6)
-- [ ] M6: backup/restore + CSV export + privacy controls (issue #7)
-- [ ] M7: TestFlight release with real signing evidence (issue #7)
+- [x] M4: tank wall + quick-log UI (issue #4)
+- [x] M5: accessible UI polish + `TankWorkspaceLayout` seam (issue #5)
+- [ ] M6: per-tank history, trends, and livestock roster (issue #6)
+- [ ] M7: backup/restore + CSV export + TestFlight evidence (issue #7)
 
 ## Development quickstart (once skeleton lands)
 

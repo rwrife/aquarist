@@ -182,11 +182,20 @@ private extension QuickLogKind {
     }
 }
 
+private enum QuickLogAccessibilityFocus: Hashable {
+    case waterChangePercent
+    case testParameter
+    case doseSubstance
+    case livestockActivity
+}
+
 struct QuickLogSheetView: View {
     @Bindable var model: AquaristModel
     let tank: Tank
     let kind: QuickLogKind
     let onDismiss: () -> Void
+
+    @AccessibilityFocusState private var accessibilityFocus: QuickLogAccessibilityFocus?
 
     // Water change state (defaults to 25% for true one-tap logging)
     @State private var waterChangePercent: Decimal = 25
@@ -233,16 +242,23 @@ struct QuickLogSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", action: onDismiss)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .accessibilityHint("Dismisses without saving this log entry.")
                         .accessibilityIdentifier("quick.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(saveButtonTitle, action: save)
+                        .frame(minWidth: 44, minHeight: 44)
                         .disabled(!canSave)
+                        .accessibilityHint("Saves this event and returns to tank detail.")
                         .accessibilityIdentifier("quick.save")
                 }
             }
         }
         .presentationDetents([.medium, .large])
+        .onAppear {
+            accessibilityFocus = initialAccessibilityFocus
+        }
     }
 
     @ViewBuilder
@@ -255,6 +271,7 @@ struct QuickLogSheetView: View {
                 Text("75%").tag(Decimal(75))
             }
             .pickerStyle(.segmented)
+            .accessibilityFocused($accessibilityFocus, equals: .waterChangePercent)
             .accessibilityIdentifier("quick.wcPercent")
 
             if let vol = tank.volume {
@@ -279,6 +296,7 @@ struct QuickLogSheetView: View {
                     Text($0).tag($0)
                 }
             }
+            .accessibilityFocused($accessibilityFocus, equals: .testParameter)
             .accessibilityIdentifier("quick.testParameter")
 
             TextField("Recorded value (e.g. 7.4 or 20 ppm)", text: $testRawValue)
@@ -298,6 +316,7 @@ struct QuickLogSheetView: View {
     private var doseSection: some View {
         Section("Substance") {
             TextField("Substance name (e.g. Liquid fertilizer)", text: $doseSubstance)
+                .accessibilityFocused($accessibilityFocus, equals: .doseSubstance)
                 .accessibilityIdentifier("quick.doseSubstance")
             TextField("Amount (e.g. 5 ml or 2 squirts)", text: $doseAmount)
                 .accessibilityIdentifier("quick.doseAmount")
@@ -318,6 +337,7 @@ struct QuickLogSheetView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityFocused($accessibilityFocus, equals: .livestockActivity)
             .accessibilityIdentifier("quick.livestockAction")
 
             TextField("Species (e.g. Cardinal tetra)", text: $livestockSpecies)
@@ -332,6 +352,15 @@ struct QuickLogSheetView: View {
         Section("Optional note") {
             TextField("e.g. from local swap", text: $livestockNote)
                 .accessibilityIdentifier("quick.livestockNote")
+        }
+    }
+
+    private var initialAccessibilityFocus: QuickLogAccessibilityFocus {
+        switch kind {
+        case .waterChange: .waterChangePercent
+        case .testReading: .testParameter
+        case .dose: .doseSubstance
+        case .livestock: .livestockActivity
         }
     }
 

@@ -6,7 +6,7 @@ struct AquaristApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TankWallView(model: model)
+            TankWorkspaceLayout(model: model)
         }
     }
 }

@@ -48,8 +48,8 @@ Out of scope: water-chemistry modelling, diagnosis or safety verdicts, plant/ani
 2. **M2 Domain core** (issue #2) — event model + derivations + unknown-safe semantics, swift-testing suite. Depends on M1.
 3. **M3 Persistence** (issue #3) — GRDB schema v1, migrations, repository protocols + fakes, fixture DB. Depends on M2.
 4. **M4 Primary workflow UI** (issue #4) — tank registry, tank wall, quick-log sheets. Depends on M3.
-5. **M5 Accessible UI polish + dual-screen design doc** (issue #5) — VoiceOver/Dynamic Type pass, wet-hands tap targets, `TankWorkspaceLayout` seam + documented unfolded design. Depends on M4.
-6. **M6 History & trends + livestock** (issue #6) — per-tank chronological ledger, raw-value trend charts, livestock roster events. Depends on M4.
+5. **M5 Accessible UI polish + dual-screen design doc** (issue #5) — VoiceOver/Dynamic Type pass, wet-hands tap targets, `TankWorkspaceLayout` seam + documented unfolded design (`docs/dual-screen.md`). Depends on M4.
+6. **M6 History & trends + livestock** (issue #6) — per-tank chronological ledger, raw-value trend charts, livestock roster events. Depends on M4, M5.
 7. **M7 Backup/export + release** (issue #7) — JSON backup/restore (previewed replace), CSV export, TestFlight upload via ASC Actions secrets with real signing evidence. Depends on M3–M6.
 
 ## Testing strategy

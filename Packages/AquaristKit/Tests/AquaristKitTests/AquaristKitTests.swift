@@ -32,6 +32,51 @@ enum Fixture {
     }
 }
 
+// MARK: - Workspace layout seam
+
+@Suite("Tank workspace layout — region mapping and continuity")
+struct TankWorkspaceLayoutTests {
+    @Test("single-pane maps the wall and selected detail to one region at a time")
+    func singlePaneRegionMapping() {
+        let tankID = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
+        var state = TankWorkspaceLayoutState()
+
+        #expect(state.mode == .singlePane)
+        #expect(state.visibleRegions == [.wallControlSurface])
+
+        state.selectTank(tankID)
+        #expect(state.visibleRegions == [.detailLedger])
+
+        state.selectTank(nil)
+        #expect(state.visibleRegions == [.wallControlSurface])
+    }
+
+    @Test("simulated fold transitions preserve selection and both scroll anchors")
+    func foldSimulationPreservesContinuity() throws {
+        let tankID = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
+        let eventID = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
+        var state = TankWorkspaceLayoutState()
+        state.selectTank(tankID)
+        state.updateWallScrollAnchor(tankID)
+        state.updateDetailScrollAnchor(eventID)
+        let continuity = state.continuity
+
+        state.transition(to: .unfoldedTwoPaneTarget)
+        #expect(state.visibleRegions == [.wallControlSurface, .detailLedger])
+        #expect(state.continuity == continuity)
+
+        state.transition(to: .singlePane)
+        #expect(state.visibleRegions == [.detailLedger])
+        #expect(state.continuity == continuity)
+
+        let restored = try JSONDecoder().decode(
+            TankWorkspaceLayoutState.self,
+            from: JSONEncoder().encode(state)
+        )
+        #expect(restored == state)
+    }
+}
+
 // MARK: - Models: Codable round-trip + append-only
 
 @Suite("Models — Codable round-trip")
