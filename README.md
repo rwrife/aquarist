@@ -84,15 +84,16 @@ The dual-screen experience is a documented design target and migration path, **n
 
 Native skeleton (issue #1), `AquaristKit` domain core (issue #2),
 `AquaristStore` persistence (issue #3), and the primary workflow UI (issue
-#4) have landed: `Aquarist.xcodeproj` (app + UI-test targets, bundle id
+#4), accessible UI polish (issue #5), and per-tank review (issue #6) have landed: `Aquarist.xcodeproj` (app + UI-test targets, bundle id
 `com.infinityball.aquarist`, `TARGETED_DEVICE_FAMILY = 1` in every
 configuration), pure Swift 6 `Packages/AquaristKit`, GRDB/SQLite schema v2
 `Packages/AquaristStore` with frozen migrations + committed fixture DB, and
-the tank wall / registry / wet-hands quick-log UI (`App/`), plus CI
+the tank wall / registry / wet-hands quick-log UI and per-tank history, raw Charts trends, and derived livestock roster (`App/`), plus CI
 that measures the exact pinned toolchain, enforces iPhone-only pre-build grep
 + post-build `UIDeviceFamily == [1]`, runs a zero-network empty-allowlist gate,
 and runs all package tests on Linux and macOS. See `docs/bootstrap-evidence.md`
 for what is host-verified vs CI-authoritative.
+The review screen keeps unparseable readings as text and breaks the plotted line at each such record. Livestock quantities remain unknown when the recorded events cannot establish a count; dated observations and original notes stay visible. See `docs/issue-6-evidence.md` for the review copy checklist and checks.
 **No device, archive, or TestFlight evidence exists yet.** Remaining backlog:
 
 - [x] M0: idea, README/PLAN, toolchain pin, backlog
@@ -101,7 +102,7 @@ for what is host-verified vs CI-authoritative.
 - [x] M3: GRDB persistence with versioned migrations, fixture DB (issue #3)
 - [x] M4: tank wall + quick-log UI (issue #4)
 - [x] M5: accessible UI polish + `TankWorkspaceLayout` seam (issue #5)
-- [ ] M6: per-tank history, trends, and livestock roster (issue #6)
+- [x] M6: per-tank history, raw reading trends, and livestock roster (issue #6)
 - [ ] M7: backup/restore + CSV export + TestFlight evidence (issue #7)
 
 ## Development quickstart (once skeleton lands)

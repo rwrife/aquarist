@@ -95,6 +95,57 @@ final class AquaristLaunchTests: XCTestCase {
     }
 
     @MainActor
+    func testTankReviewEmptyStatesAndVerbatimReading() throws {
+        let app = launchApp()
+        createTank(named: "Review Tank", in: app)
+        app.buttons["tank.card.Review Tank"].tap()
+
+        XCTAssertTrue(app.staticTexts["trends.empty"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["roster.empty"].exists)
+        XCTAssertTrue(app.staticTexts["history.empty"].exists)
+
+        app.buttons["quick.testReading"].tap()
+        let value = app.textFields["quick.testRawValue"]
+        XCTAssertTrue(value.waitForExistence(timeout: 5))
+        value.tap()
+        value.typeText("7.4")
+        app.buttons["quick.save"].tap()
+
+        let chart = app.descendants(matching: .any).matching(identifier: "trends.chart").firstMatch
+        XCTAssertTrue(chart.waitForExistence(timeout: 5))
+        app.swipeUp()
+        let reading = app.descendants(matching: .any)
+            .matching(identifier: "trends.reading.0").firstMatch
+        if !reading.exists { app.swipeUp() }
+        XCTAssertTrue(reading.exists)
+        XCTAssertTrue(reading.label.contains("7.4"))
+        let filter = app.buttons["history.filter"]
+        XCTAssertTrue(filter.exists)
+        filter.tap()
+        app.buttons["Doses"].tap()
+        XCTAssertTrue(app.staticTexts["history.empty"].exists)
+    }
+
+    @MainActor
+    func testLivestockLogAppearsInDerivedRoster() throws {
+        let app = launchApp()
+        createTank(named: "Stock Tank", in: app)
+        app.buttons["tank.card.Stock Tank"].tap()
+        app.buttons["quick.livestock"].tap()
+        let species = app.textFields["quick.livestockSpecies"]
+        XCTAssertTrue(species.waitForExistence(timeout: 5))
+        species.tap()
+        species.typeText("Cory")
+        app.buttons["quick.save"].tap()
+
+        let roster = app.descendants(matching: .any)
+            .matching(identifier: "roster.species.Cory").firstMatch
+        XCTAssertTrue(roster.waitForExistence(timeout: 5))
+        XCTAssertTrue(roster.label.contains("Recorded quantity: 1"))
+        XCTAssertTrue(roster.label.contains("First added:"))
+    }
+
+    @MainActor
     private func launchApp(accessibilityDynamicType: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]

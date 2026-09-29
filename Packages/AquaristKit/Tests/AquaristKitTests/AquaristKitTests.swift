@@ -479,6 +479,9 @@ struct StreakAndTrendTests {
         #expect(points.map(\.rawValue) == ["20", "10 ppm", "5"]) // verbatim, chronological
         #expect(points[1].parsedValue == nil)                     // unparseable stays nil
         #expect(points[0].parsedValue == 20)
+        let runs = Derivations.numericReadingRuns(points: points)
+        #expect(runs.map(\.id) == [0, 2])
+        #expect(runs.map { $0.points.map(\.rawValue) } == [["20"], ["5"]])
         // Other parameters never leak into the series.
         #expect(Derivations.readingSeries(parameter: "PO4", ledger: ledger) == .unknown)
     }
@@ -501,14 +504,52 @@ struct LivestockRosterTests {
         #expect(roster == ["Cory": 4]) // Tetra fully removed; observed-only species absent
     }
 
-    @Test("over-removal clamps at zero without corrupting history")
+    @Test("over-removal leaves the quantity unknown without corrupting history")
     func overRemoval() {
         let ledger = EventLedger(events: [
             Fixture.event(Fixture.date(2026, 1, 1), .livestockAdded(species: "Snail", quantity: 1, note: nil)),
             Fixture.event(Fixture.date(2026, 1, 2), .livestockRemoved(species: "Snail", quantity: 5, note: "miscount")),
             Fixture.event(Fixture.date(2026, 1, 3), .livestockAdded(species: "Snail", quantity: 2, note: nil)),
         ])
-        #expect(Derivations.livestockRoster(ledger: ledger) == ["Snail": 2])
+        #expect(Derivations.livestockRoster(ledger: ledger).isEmpty)
+        #expect(Derivations.livestockRosterEntries(ledger: ledger)[0].quantity == .unknown)
         #expect(ledger.events.count == 3) // history untouched
+    }
+
+    @Test("roster reconstructs dated quantities, zero stock, and verbatim observations")
+    func datedRoster() {
+        let added = Fixture.date(2026, 1, 1)
+        let observed = Fixture.date(2026, 1, 4)
+        let removed = Fixture.date(2026, 1, 7)
+        let ledger = EventLedger(events: [
+            Fixture.event(removed, .livestockRemoved(species: "Cory", quantity: 2, note: "moved")),
+            Fixture.event(added, .livestockAdded(species: "Cory", quantity: 2, note: nil)),
+            Fixture.event(observed, .livestockObserved(species: "Cory", note: "  under driftwood  ")),
+        ])
+        let entry = Derivations.livestockRosterEntries(ledger: ledger)[0]
+        #expect(entry.species == "Cory")
+        #expect(entry.quantity == .known(0))
+        #expect(entry.firstAddedAt == added)
+        #expect(entry.lastActivityAt == removed)
+        #expect(entry.observations.map(\.note) == ["  under driftwood  "])
+    }
+
+    @Test("partial records stay unknown and a correction retracts an add")
+    func partialAndCorrection() {
+        let add = Fixture.event(Fixture.date(2026, 2, 1),
+                                .livestockAdded(species: "Tetra", quantity: 3, note: nil))
+        let ledger = EventLedger(events: [
+            Fixture.event(Fixture.date(2026, 1, 1),
+                          .livestockObserved(species: "Shrimp", note: "  spotted one  ")),
+            Fixture.event(Fixture.date(2026, 1, 2),
+                          .livestockRemoved(species: "Snail", quantity: 1, note: nil)),
+            add,
+            Fixture.event(Fixture.date(2026, 2, 2),
+                          .correction(targetEventID: add.id, note: "Undo")),
+        ])
+        let entries = Derivations.livestockRosterEntries(ledger: ledger)
+        #expect(entries.count == 2)
+        #expect(entries.allSatisfy { $0.quantity == .unknown })
+        #expect(entries.first { $0.species == "Shrimp" }?.observations[0].note == "  spotted one  ")
     }
 }

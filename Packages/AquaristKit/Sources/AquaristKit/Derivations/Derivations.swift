@@ -153,6 +153,36 @@ public enum Derivations {
         public let parsedValue: Decimal?
     }
 
+    public struct NumericReading: Equatable, Sendable, Identifiable {
+        public let index: Int
+        public let timestamp: Date
+        public let rawValue: String
+        public let value: Decimal
+        public var id: Int { index }
+    }
+
+    public struct ReadingRun: Equatable, Sendable, Identifiable {
+        public let id: Int
+        public let points: [NumericReading]
+    }
+
+    /// Consecutive numeric records only. Every unparseable record ends a
+    /// run, so a chart cannot draw a line across that record.
+    public static func numericReadingRuns(points: [ReadingPoint]) -> [ReadingRun] {
+        var runs: [ReadingRun] = []
+        for (index, point) in points.enumerated() {
+            guard let value = point.parsedValue else { continue }
+            let numeric = NumericReading(index: index, timestamp: point.timestamp,
+                                         rawValue: point.rawValue, value: value)
+            if let last = runs.last, last.points.last?.index == index - 1 {
+                runs[runs.count - 1] = ReadingRun(id: last.id, points: last.points + [numeric])
+            } else {
+                runs.append(ReadingRun(id: index, points: [numeric]))
+            }
+        }
+        return runs
+    }
+
     /// Raw, chronological per-parameter reading series — no smoothing,
     /// no modeling, no aggregation. `.unknown` when the parameter has no
     /// readings at all.
@@ -175,24 +205,87 @@ public enum Derivations {
 
     // MARK: - Livestock roster (current state derived from roster events)
 
-    /// Per-species present-count derived from add/remove events.
-    /// Removals can never push a count below zero (the ledger stays
-    /// honest; an over-removal clamps display at 0 but the events remain).
+    /// A species' recorded activity. An unknown count means the available
+    /// add/remove records cannot establish a current quantity.
+    public struct LivestockRosterEntry: Equatable, Sendable, Identifiable {
+        public let species: String
+        public let quantity: Derivation<Int>
+        public let firstAddedAt: Date?
+        public let lastActivityAt: Date
+        public let observations: [LivestockObservation]
+
+        public var id: String { species }
+    }
+
+    public struct LivestockObservation: Equatable, Sendable, Identifiable {
+        public let id: UUID
+        public let timestamp: Date
+        public let note: String?
+    }
+
+    /// Reconstructs activity from effective events. An observation alone,
+    /// removal before an add, nonpositive quantity, or over-removal leaves
+    /// the count unknown; later additions cannot repair missing history.
+    /// Fully removed species remain visible with a recorded count of zero.
+    public static func livestockRosterEntries(ledger: EventLedger) -> [LivestockRosterEntry] {
+        struct State {
+            var quantity: Int?
+            var firstAddedAt: Date?
+            var lastActivityAt: Date
+            var observations: [LivestockObservation] = []
+        }
+        var states: [String: State] = [:]
+        for event in ledger.effectiveEvents {
+            let species: String
+            switch event.payload {
+            case let .livestockAdded(name, _, _),
+                 let .livestockRemoved(name, _, _),
+                 let .livestockObserved(name, _):
+                species = name
+            default: continue
+            }
+            var state = states[species] ?? State(quantity: nil, lastActivityAt: event.timestamp)
+            state.lastActivityAt = event.timestamp
+            switch event.payload {
+            case let .livestockAdded(_, quantity, _):
+                if state.firstAddedAt == nil { state.firstAddedAt = event.timestamp }
+                if quantity <= 0 { state.quantity = nil }
+                else if let previous = state.quantity {
+                    state.quantity = previous.addingReportingOverflow(quantity).overflow ? nil : previous + quantity
+                } else if states[species] == nil {
+                    state.quantity = quantity
+                }
+            case let .livestockRemoved(_, quantity, _):
+                if quantity <= 0 { state.quantity = nil }
+                else if let previous = state.quantity, previous >= quantity {
+                    state.quantity = previous - quantity
+                } else { state.quantity = nil }
+            case let .livestockObserved(_, note):
+                state.observations.append(.init(id: event.id, timestamp: event.timestamp, note: note))
+            default: break
+            }
+            states[species] = state
+        }
+        return states.map { species, state in
+            LivestockRosterEntry(
+                species: species,
+                quantity: state.quantity.map(Derivation.known) ?? .unknown,
+                firstAddedAt: state.firstAddedAt,
+                lastActivityAt: state.lastActivityAt,
+                observations: state.observations
+            )
+        }.sorted { $0.species.localizedStandardCompare($1.species) == .orderedAscending }
+    }
+
+    /// Compatibility view containing only positive, known quantities.
+    /// Use `livestockRosterEntries` when unknown and zero states matter.
     public static func livestockRoster(
         ledger: EventLedger
     ) -> [String: Int] {
-        var roster: [String: Int] = [:]
-        for event in ledger.effectiveEvents {
-            switch event.payload {
-            case let .livestockAdded(species, quantity, _):
-                roster[species, default: 0] += quantity
-            case let .livestockRemoved(species, quantity, _):
-                roster[species, default: 0] = max(0, (roster[species] ?? 0) - quantity)
-            default:
-                break
-            }
-        }
-        return roster.filter { $0.value > 0 }
+        Dictionary(uniqueKeysWithValues: livestockRosterEntries(ledger: ledger).compactMap { entry in
+            guard case let .known(quantity) = entry.quantity, quantity > 0 else { return nil }
+            return (entry.species, quantity)
+        })
     }
 
     // MARK: - Helpers

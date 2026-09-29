@@ -15,6 +15,7 @@ final class AquaristModel {
 
     private(set) var tanks: [Tank] = []
     private(set) var eventsByTank: [UUID: [TankEvent]] = [:]
+    private(set) var bandsByTank: [UUID: [ReferenceBand]] = [:]
     private(set) var undoCandidate: UndoCandidate?
     var errorMessage: String?
 
@@ -53,16 +54,23 @@ final class AquaristModel {
         eventsByTank[tankID] ?? []
     }
 
+    func bands(for tankID: UUID) -> [ReferenceBand] {
+        bandsByTank[tankID] ?? []
+    }
+
     func reload() {
         guard let store else { return }
         do {
             let loadedTanks = try store.tanks.allTanks()
             var events: [UUID: [TankEvent]] = [:]
+            var bands: [UUID: [ReferenceBand]] = [:]
             for tank in loadedTanks {
                 events[tank.id] = try store.events.events(for: tank.id)
+                bands[tank.id] = try store.referenceBands.bands(for: tank.id)
             }
             tanks = loadedTanks
             eventsByTank = events
+            bandsByTank = bands
         } catch {
             errorMessage = "Aquarist could not read local data: \(error.localizedDescription)"
         }
