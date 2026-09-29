@@ -54,6 +54,8 @@ Out of scope: water-chemistry modelling, diagnosis or safety verdicts, plant/ani
 
 ## Testing strategy
 
+M6 review is implemented in `TankReviewView`: the full append-only ledger is ordered oldest first and filterable by event kind; corrected events remain visible in history while trends and the roster use effective events. Charts plot each numeric reading and split lines at unparseable records. The roster shows dated quantities, zero after a complete removal, unknown for partial records, and verbatim observation notes. UI tests exercise review and roster flows; swift-testing covers roster reconstruction on Linux.
+
 - **Domain:** swift-testing suite in `AquaristKit` — derivation edge cases (empty ledger, DST boundaries, unknown inputs, integer arithmetic for volumes/cents-free quantities), backup codec round-trips, reference-band verbatim echo. Runs on Linux CI (pinned Swift) and macOS CI.
 - **Store:** migration up-tests against committed fixture DB; repository fakes for UI tests.
 - **UI:** one launch XCUITest at skeleton; flow tests as views land.

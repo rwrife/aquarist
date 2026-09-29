@@ -93,6 +93,8 @@ struct TankDetailView: View {
                             .padding(12)
                             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
+
+                        TankReviewView(events: model.events(for: tank.id), bands: model.bands(for: tank.id))
                     }
                     .padding(16)
                 }
@@ -389,7 +391,7 @@ struct QuickLogSheetView: View {
     private func save() {
         let noteOrNil: (String) -> String? = {
             let trimmed = $0.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? nil : trimmed
+            return trimmed.isEmpty ? nil : $0
         }
 
         let payload: TankEventPayload
@@ -407,19 +409,19 @@ struct QuickLogSheetView: View {
         case .testReading:
             payload = .testReading(
                 parameter: testParameter,
-                rawValue: testRawValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                rawValue: testRawValue,
                 note: noteOrNil(testNote)
             )
             summary = "Test reading (\(testParameter): \(testRawValue)) logged"
 
         case .dose:
-            let substance = doseSubstance.trimmingCharacters(in: .whitespacesAndNewlines)
+            let substance = doseSubstance
             let amount = noteOrNil(doseAmount)
             payload = .dose(substance: substance, amount: amount, note: noteOrNil(doseNote))
             summary = "Dose (\(substance)) logged"
 
         case .livestock:
-            let species = livestockSpecies.trimmingCharacters(in: .whitespacesAndNewlines)
+            let species = livestockSpecies
             let note = noteOrNil(livestockNote)
             switch livestockAction {
             case .added:
