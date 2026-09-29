@@ -14,6 +14,7 @@
 		A10000000000000000000107 /* TankEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000208 /* TankEditorView.swift */; };
 		A10000000000000000000108 /* QuickLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000209 /* QuickLogView.swift */; };
 		A10000000000000000000109 /* AquaristStore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000803 /* AquaristStore */; };
+		A1000000000000000000010A /* TankWorkspaceLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000020A /* TankWorkspaceLayout.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +36,7 @@
 		A10000000000000000000207 /* TankWallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TankWallView.swift; sourceTree = "<group>"; };
 		A10000000000000000000208 /* TankEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TankEditorView.swift; sourceTree = "<group>"; };
 		A10000000000000000000209 /* QuickLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLogView.swift; sourceTree = "<group>"; };
+		A1000000000000000000020A /* TankWorkspaceLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TankWorkspaceLayout.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +75,7 @@
 				A10000000000000000000207 /* TankWallView.swift */,
 				A10000000000000000000208 /* TankEditorView.swift */,
 				A10000000000000000000209 /* QuickLogView.swift */,
+				A1000000000000000000020A /* TankWorkspaceLayout.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -180,6 +183,7 @@
 				A10000000000000000000106 /* TankWallView.swift in Sources */,
 				A10000000000000000000107 /* TankEditorView.swift in Sources */,
 				A10000000000000000000108 /* QuickLogView.swift in Sources */,
+				A1000000000000000000010A /* TankWorkspaceLayout.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

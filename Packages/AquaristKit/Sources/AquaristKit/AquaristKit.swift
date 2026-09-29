@@ -23,5 +23,5 @@ public enum AquaristKit {
     public static let domain = "AquaristKit"
 
     /// Current build/CI milestone marker consumed by the app's debug surface.
-    public static let milestone = "M4-primary-workflow"
+    public static let milestone = "M5-accessibility-workspace-seam"
 }
