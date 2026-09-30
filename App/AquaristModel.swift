@@ -3,6 +3,11 @@ import AquaristStore
 import Foundation
 import Observation
 
+/// App-layer errors surfaced to export/restore flows.
+enum AquaristModelError: Error, Equatable {
+    case storageUnavailable
+}
+
 @Observable
 final class AquaristModel {
     struct UndoCandidate: Equatable {
@@ -102,6 +107,29 @@ final class AquaristModel {
             errorMessage = "Log entry could not be saved: \(error.localizedDescription)"
             return false
         }
+    }
+
+    /// True when the local store is open and backup/restore can run.
+    var canMutateStore: Bool { store != nil }
+
+    /// Exports the full dataset as a versioned backup document.
+    func backupDocument() throws -> BackupDocument {
+        guard let store else {
+            throw AquaristModelError.storageUnavailable
+        }
+        return try store.backupDocument()
+    }
+
+    /// Replaces the local dataset with a confirmed backup document.
+    /// The UI must present a preview and obtain explicit user confirmation
+    /// before calling this.
+    func restore(from document: BackupDocument) throws {
+        guard let store else {
+            throw AquaristModelError.storageUnavailable
+        }
+        try store.restore(document)
+        undoCandidate = nil
+        reload()
     }
 
     func undoLastLog() {

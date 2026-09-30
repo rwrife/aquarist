@@ -1,0 +1,316 @@
+# Release lane (issue #7): ad-hoc archive + TestFlight upload via the App
+# Store Connect API using repository secrets (names only — values are never
+# echoed). Bundle id com.infinityball.aquarist. iPhone-only is re-verified
+# from the ARCHIVED Info.plist (UIDeviceFamily == [1]) before anything is
+# uploaded. A missing exact Xcode 26.0.1 (17A400) / iPhoneOS 26.0 pin is an
+# acceptance blocker — never a silent substitution.
+#
+# Secrets referenced by name: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, ASC_TEAM_ID
+# TestFlight claims require the real processed-build evidence this workflow
+# prints (build id + processing state) — Linux CI output is not release evidence.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "Upload the exported build to TestFlight"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  SCHEME: Aquarist
+  BUNDLE_ID: com.infinityball.aquarist
+
+jobs:
+  testflight:
+    name: Archive + TestFlight upload
+    runs-on: macos-15
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0   # changelog since previous tag
+
+      - name: Assert exact toolchain pin (Xcode 26.0.1 / 17A400 / iPhoneOS 26.0)
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          SELECTED="$(python3 Scripts/select_xcode.py --toolchain toolchain.json)"
+          echo "DEVELOPER_DIR=$SELECTED" >> "$GITHUB_ENV"
+          echo "Selected pinned DEVELOPER_DIR: $SELECTED"
+
+      - name: iPhone-only project guard (pre-archive)
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          grep -q "TARGETED_DEVICE_FAMILY = 1;" Aquarist.xcodeproj/project.pbxproj \
+            || { echo "::error::TARGETED_DEVICE_FAMILY = 1 missing from project"; exit 1; }
+          bad=$(grep -E "TARGETED_DEVICE_FAMILY = [^1;]" Aquarist.xcodeproj/project.pbxproj || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Non-iPhone TARGETED_DEVICE_FAMILY values found:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "iPhone-only project guard: PASS"
+
+      - name: Inspect default keychain signing identities (counts only)
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          # The runner login keychain is unlocked with the codesigning
+          # partition preconfigured; -allowProvisioningUpdates writes
+          # generated keys/certs there. Never create an empty custom
+          # keychain — set-key-partition-list fails on a keychain with no
+          # items. Identity COUNTS only, never names.
+          { security find-identity -v -p codesigning || true; } \
+            | awk '/valid identities found/{print "Available code-signing identities: " $1}'
+
+      - name: Write App Store Connect API key (file only; contents never logged)
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          for pair in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 ASC_TEAM_ID; do
+            name="$pair"
+            if [ -z "${!pair:-}" ]; then
+              echo "::error::Required secret $name is not set in this repository"
+              exit 1
+            fi
+          done
+          mkdir -p "$RUNNER_TEMP/asc"
+          printf '%s' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$RUNNER_TEMP/asc/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/asc/AuthKey.p8"
+          {
+            echo "ASC_KEY_ID_VALUE=$ASC_KEY_ID"
+            echo "ASC_ISSUER_ID_VALUE=$ASC_ISSUER_ID"
+            echo "ASC_TEAM_ID_VALUE=$ASC_TEAM_ID"
+          } >> "$GITHUB_ENV"
+          test -s "$RUNNER_TEMP/asc/AuthKey.p8"
+
+      - name: Archive (automatic signing via ASC API key)
+        timeout-minutes: 25
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          xcodebuild archive \
+            -project Aquarist.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "generic/platform=iOS" \
+            -archivePath build/Aquarist.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID_VALUE" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID_VALUE" \
+            DEVELOPMENT_TEAM="$ASC_TEAM_ID_VALUE" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGNING_ALLOWED=YES \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            2>&1 | tee build/archive.log
+          grep -vE 'ASC_|AuthKey' build/archive.log | tail -n 40 || true
+          APP="build/Aquarist.xcarchive/Products/Applications/Aquarist.app"
+          BID=$(plutil -extract CFBundleIdentifier raw "$APP/Info.plist")
+          [ "$BID" = "$BUNDLE_ID" ] || { echo "Wrong bundle id: $BID"; exit 1; }
+          codesign --verify --deep --strict "$APP"
+
+      - name: Archive iPhone-only re-verification (UIDeviceFamily == [1])
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          APP="build/Aquarist.xcarchive/Products/Applications/Aquarist.app"
+          plutil -convert json -o build/archive-info.json "$APP/Info.plist"
+          python3 - build/archive-info.json <<'PYTHON'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              info = json.load(handle)
+          family = info.get("UIDeviceFamily")
+          if family != [1]:
+              raise SystemExit(f"Archived app UIDeviceFamily must be [1], observed {family!r}")
+          print("Verified archived app UIDeviceFamily == [1] (iPhone only)")
+          PYTHON
+          # Xcode 26 single-size icons never write CFBundleIconName into the
+          # archived plist; assert the real compiled artifact evidence instead.
+          test -d "$APP/Assets.car" || { echo "::error::Assets.car missing in archive"; exit 1; }
+          if ! ls "$APP"/AppIcon*.png >/dev/null 2>&1; then
+            echo "::error::No emitted AppIcon raster in archive"
+            exit 1
+          fi
+          echo "Archive icon evidence: Assets.car + AppIcon raster present"
+
+      - name: Build export options plist
+        env:
+          UPLOAD: ${{ inputs.upload != false }}   # true on tag pushes (empty != false)
+        timeout-minutes: 1
+        run: |
+          set -euo pipefail
+          python3 - "$UPLOAD" > build/ExportOptions.plist <<'PYTHON'
+          import sys
+
+          upload = sys.argv[1] != "false"
+          body = """  <key>method</key>
+          <string>app-store-connect</string>
+          <key>signingStyle</key>
+          <string>automatic</string>
+          <key>manageAppVersionAndBuildNumber</key>
+          <false/>
+          <key>uploadSymbols</key>
+          <true/>
+          <key>teamID</key>
+          <string>__TEAM__</string>
+          """
+          if upload:
+              body += """  <key>destination</key>
+          <string>upload</string>
+          <key>uploadMethod</key>
+          <string>app-store-connect</string>
+          """
+          print("""<?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          """ + body + """</dict>
+          </plist>""")
+          PYTHON
+          sed -i '' "s/__TEAM__/$ASC_TEAM_ID_VALUE/" build/ExportOptions.plist
+          plutil -lint build/ExportOptions.plist
+
+      - name: Export + upload to TestFlight
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          xcodebuild -exportArchive \
+            -archivePath build/Aquarist.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID_VALUE" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID_VALUE" \
+            2>&1 | tee build/export.log
+          grep -vE 'ASC_|AuthKey' build/export.log | tail -n 30 || true
+
+      - name: Await processed TestFlight build (ASC API)
+        if: ${{ inputs.upload != false }}
+        timeout-minutes: 20
+        env:
+          WV_P8_PATH: ${{ runner.temp }}/asc/AuthKey.p8
+          WV_BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          # macOS Homebrew Python is externally managed (PEP 668): venv.
+          VENV="$RUNNER_TEMP/asc-venv"
+          python3 -m venv "$VENV"
+          "$VENV/bin/pip" install --quiet 'pyjwt[crypto]'
+          WV_KEY_ID="$ASC_KEY_ID_VALUE" WV_ISSUER_ID="$ASC_ISSUER_ID_VALUE" \
+          WV_BUNDLE_ID="$BUNDLE_ID" "$VENV/bin/python3" - <<'PYTHON'
+          import json, os, sys, time, urllib.request
+          import jwt
+
+          key = open(os.environ["WV_P8_PATH"]).read()
+
+          def auth():
+              now = int(time.time())
+              return jwt.encode(
+                  {"iss": os.environ["WV_ISSUER_ID"], "aud": "appstoreconnect-v1",
+                   "iat": now, "exp": now + 600},
+                  key, algorithm="ES256",
+                  headers={"kid": os.environ["WV_KEY_ID"]})
+
+          def api(path):
+              req = urllib.request.Request(
+                  "https://api.appstoreconnect.apple.com" + path,
+                  headers={"Authorization": "Bearer " + auth()})
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.load(resp)
+
+          apps = api(f'/v1/apps?filter[bundleId]={os.environ["WV_BUNDLE_ID"]}')['data']
+          if not apps:
+              sys.exit("No App Store Connect app record for the bundle id")
+          app_id = apps[0]["id"]
+          print(f"App Store Connect app record: {app_id}")
+
+          wanted = os.environ["WV_BUILD_NUMBER"]
+          deadline = time.time() + 15 * 60
+          while time.time() < deadline:
+              builds = api(f'/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=15')['data']
+              match = next((b for b in builds if b["attributes"].get("version") == wanted), None)
+              if match is None:
+                  time.sleep(30)
+                  continue
+              state = match["attributes"].get("processingState")
+              print(f"build id={match['id']} version={wanted} processing={state}")
+              if state == "PROCESSING":
+                  time.sleep(30)
+                  continue
+              if state in {"VALID", "COMPLETE"}:
+                  print(f"Processed TestFlight build id: {match['id']}")
+                  sys.exit(0)
+              if state in {"FAILED", "INVALID"}:
+                  sys.exit(f"TestFlight processing failed: {state}")
+              sys.exit(f"Unexpected processing state: {state}")
+          sys.exit("Timed out waiting for the build to appear/finish processing")
+          PYTHON
+
+      - name: Retain release artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-export-${{ github.sha }}
+          path: |
+            build/export
+            build/archive-info.json
+            build/archive.log
+            build/export.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Remove API key material
+        if: always()
+        timeout-minutes: 1
+        run: rm -rf "$RUNNER_TEMP/asc" "$RUNNER_TEMP/asc-venv"
+
+  github-release:
+    name: GitHub release (tag pushes only)
+    needs: testflight
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog from squash-merge subjects
+        run: |
+          set -euo pipefail
+          PREV="$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || echo HEAD)"
+          {
+            echo "## What's new"
+            git log --no-merges --pretty=format:'- %s' "$PREV..$GITHUB_REF_NAME"
+            echo
+          } > whats-new.md
+          cat whats-new.md
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          args=(--title "Release $GITHUB_REF_NAME" --notes-file whats-new.md)
+          gh release create "$GITHUB_REF_NAME" "${args[@]}"

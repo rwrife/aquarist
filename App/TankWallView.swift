@@ -50,6 +50,14 @@ struct TankWallView: View {
                 TankDetailView(model: model, tankID: tankID)
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        DataExportView(model: model)
+                    } label: {
+                        Label("Your data", systemImage: "square.and.arrow.up.on.square")
+                    }
+                    .accessibilityIdentifier("wall.yourData")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         editorContext = .create

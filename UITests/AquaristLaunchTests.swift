@@ -146,6 +146,34 @@ final class AquaristLaunchTests: XCTestCase {
     }
 
     @MainActor
+    func testYourDataScreenShowsExportControlsWithCorrectEnablement() throws {
+        let app = launchApp()
+
+        // Empty store: CSV export disabled until a tank exists; backup and
+        // restore remain reachable (an empty backup is a valid backup).
+        app.buttons["wall.yourData"].tap()
+        let exportBackup = app.buttons["data.exportBackup"]
+        let exportCSV = app.buttons["data.exportCSV"]
+        let restoreBackup = app.buttons["data.restoreBackup"]
+        XCTAssertTrue(exportBackup.waitForExistence(timeout: 5))
+        XCTAssertTrue(restoreBackup.exists)
+        XCTAssertTrue(exportCSV.exists)
+        XCTAssertEqual(exportCSV.isEnabled, false)
+
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        createTank(named: "Data Tank", in: app)
+
+        app.buttons["wall.yourData"].tap()
+        XCTAssertTrue(exportBackup.waitForExistence(timeout: 5))
+        // Bound the enablement propagation instead of asserting instantly.
+        let deadline = Date().addingTimeInterval(5)
+        while app.buttons["data.exportCSV"].isEnabled == false && Date() < deadline {
+            usleep(100_000)
+        }
+        XCTAssertTrue(app.buttons["data.exportCSV"].isEnabled)
+    }
+
+    @MainActor
     private func launchApp(accessibilityDynamicType: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
